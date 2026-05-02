@@ -5,14 +5,13 @@ import workerSrc from "pdfjs-dist/build/pdf.worker.min?url";
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 export default function PdfViewer({ file }) {
-  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const pdfRef = useRef(null);
 
-  const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // 📄 LOAD PDF (FIX REAL)
+  // 📄 LOAD PDF
   useEffect(() => {
     if (!file) return;
 
@@ -20,7 +19,6 @@ export default function PdfViewer({ file }) {
       try {
         setLoading(true);
 
-        // 🔥 IMPORTANTE: leer como ArrayBuffer (FIX CLAVE)
         const response = await fetch(file);
         const buffer = await response.arrayBuffer();
 
@@ -28,7 +26,9 @@ export default function PdfViewer({ file }) {
 
         pdfRef.current = pdf;
         setTotal(pdf.numPages);
-        setPage(1);
+
+        // 🔥 renderizar TODAS las páginas
+        renderAllPages(pdf);
 
         setLoading(false);
       } catch (err) {
@@ -40,38 +40,35 @@ export default function PdfViewer({ file }) {
     load();
   }, [file]);
 
-  // 📄 RENDER PAGE
-  useEffect(() => {
-    if (!pdfRef.current) return;
-    if (!canvasRef.current) return;
+  // 📄 RENDER TODAS LAS PÁGINAS (SCROLL REAL)
+  const renderAllPages = async (pdf) => {
+    const container = containerRef.current;
+    if (!container) return;
 
-    const render = async () => {
-      try {
-        const pdf = pdfRef.current;
-        const pageObj = await pdf.getPage(page);
+    container.innerHTML = ""; // limpiar antes
 
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext("2d");
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
 
-        const viewport = pageObj.getViewport({ scale: 1.4 });
+      const viewport = page.getViewport({ scale: 1.3 });
 
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
 
-        await pageObj.render({
-          canvasContext: ctx,
-          viewport,
-        }).promise;
+      canvas.style.display = "block";
+      canvas.style.margin = "0 auto 20px auto"; // espacio entre páginas
 
-      } catch (err) {
-        console.error("❌ RENDER ERROR:", err);
-      }
-    };
+      container.appendChild(canvas);
 
-    render();
-  }, [page]);
+      await page.render({
+        canvasContext: ctx,
+        viewport,
+      }).promise;
+    }
+  };
 
   if (!file) {
     return <div style={{ color: "white" }}>📄 Sin PDF</div>;
@@ -83,39 +80,37 @@ export default function PdfViewer({ file }) {
         width: "100%",
         height: "100%",
         background: "black",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        position: "relative"
+        position: "relative",
+        overflowY: "auto" // 🔥 SCROLL REAL
       }}
     >
       {loading && (
-        <div style={{ color: "white", position: "absolute" }}>
+        <div style={{
+          color: "white",
+          position: "absolute",
+          top: 10,
+          left: 10
+        }}>
           Cargando PDF...
         </div>
       )}
 
-      <canvas ref={canvasRef} />
+      {/* 🔥 CONTENEDOR CON TODAS LAS PÁGINAS */}
+      <div ref={containerRef} />
 
+      {/* INFO */}
       <div
         style={{
-          position: "absolute",
+          position: "fixed",
           bottom: 10,
+          right: 10,
+          background: "rgba(0,0,0,0.6)",
           color: "white",
-          display: "flex",
-          gap: 10,
-          alignItems: "center"
+          padding: "5px 10px",
+          borderRadius: 6
         }}
       >
-        <button onClick={() => setPage(p => Math.max(1, p - 1))}>
-          ⬅
-        </button>
-
-        <span>{page} / {total}</span>
-
-        <button onClick={() => setPage(p => Math.min(total, p + 1))}>
-          ➡
-        </button>
+        {total} páginas
       </div>
     </div>
   );

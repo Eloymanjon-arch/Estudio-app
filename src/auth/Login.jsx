@@ -2,12 +2,18 @@ import { useState } from "react";
 
 export default function Login({ onLogin }) {
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleLogin = () => {
-    if (!name.trim()) return;
-    localStorage.setItem("user", name);
-    localStorage.setItem("logged", "true");
-    onLogin(name);
+    if (name === "emanjim" && password === "Minisdef272727") {
+      
+      const user = { name };
+
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("logged", "true");
+
+      onLogin(user);
+    }
   };
 
   return (
@@ -16,9 +22,16 @@ export default function Login({ onLogin }) {
         <h2>📱 Estudio Pro</h2>
 
         <input
-          placeholder="Tu nombre"
+          placeholder="Usuario"
           value={name}
           onChange={(e) => setName(e.target.value)}
+        />
+
+        <input
+          placeholder="Contraseña"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
         />
 
         <button onClick={handleLogin}>
